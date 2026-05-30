@@ -128,12 +128,8 @@ class NoisePlayer {
                             }
                             NoiseType.PINK -> {
                                 // Real-time Voss-McCartney algorithm
-                                val lastIndex = pinkIndex
                                 pinkIndex = (pinkIndex + 1) and 4095 // modulo 4096
-                                var diff = 0
-                                while ((lastIndex xor pinkIndex) and (1 shl diff) == 0 && diff < 11) {
-                                    diff++
-                                }
+                                val diff = if (pinkIndex == 0) 11 else Integer.numberOfTrailingZeros(pinkIndex)
                                 pinkRunningSum -= pinkRows[diff]
                                 pinkRows[diff] = random.nextFloat() * 2f - 1f
                                 pinkRunningSum += pinkRows[diff]

@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -787,54 +788,6 @@ fun PresetRowItem(
         Column {
             Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
             Text(desc, fontSize = 11.sp, color = Color.LightGray)
-        }
-    }
-}
-
-// Add horizontal drag detector interface for custom slider
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectHorizontalDragGestures(
-    onHorizontalDrag: (change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: Float) -> Unit
-) {
-    forEachGesture {
-        awaitPointerEventScope {
-            val down = awaitFirstDown(requireUnconsumed = false)
-            var drag: androidx.compose.ui.input.pointer.PointerInputChange? = down
-            while (drag != null && drag.pressed) {
-                val event = awaitPointerEvent()
-                drag = event.changes.firstOrNull { it.id == down.id }
-                if (drag != null && drag.pressed) {
-                    val dragAmount = drag.position.x - drag.previousPosition.x
-                    if (dragAmount != 0f) {
-                        onHorizontalDrag(drag, dragAmount)
-                    }
-                }
-            }
-        }
-    }
-}
-
-private suspend fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.awaitFirstDown(
-    requireUnconsumed: Boolean
-): androidx.compose.ui.input.pointer.PointerInputChange {
-    while (true) {
-        val event = awaitPointerEvent()
-        val firstDown = event.changes.firstOrNull {
-            if (requireUnconsumed) !it.isConsumed else true
-        }
-        if (firstDown != null && firstDown.pressed) {
-            return firstDown
-        }
-    }
-}
-
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.forEachGesture(
-    block: suspend androidx.compose.ui.input.pointer.PointerInputScope.() -> Unit
-) {
-    while (true) {
-        try {
-            block()
-        } catch (e: Exception) {
-            // ignore and retry
         }
     }
 }
