@@ -1,6 +1,5 @@
 package com.example.ui
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -8,7 +7,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -32,7 +32,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -42,7 +44,15 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.audio.NoisePlayer.NoiseType
+import kotlin.math.abs
 import kotlin.math.sin
+
+private data class NoiseTheme(
+    val accent: Color,
+    val light: Color,
+    val quiet: Color,
+    val contrastText: Color
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,36 +84,48 @@ fun NoiseUiScreen(
     val canvasBg = Color(0xFF1A1C1E) // Immersive deep charcoal
     val cardHeaderColor = Color(0xFFC2C7CF) // Cool silver text
 
-    // Dynamic color accents based on active mode
-    val activeAccentColor = when (activeType) {
-        NoiseType.WHITE -> Color(0xFF4DD0E1) // Bright aqua
-        NoiseType.GRAY -> Color(0xFFCFD8DC)  // Sleek aluminum
-        NoiseType.PINK -> Color(0xFFFFB1C8)  // Warm comfort rose pink
-    }
-    
-    val activeLightColor = when (activeType) {
-        NoiseType.WHITE -> Color(0xFFE0F7FA)
-        NoiseType.GRAY -> Color(0xFFECEFF1)
-        NoiseType.PINK -> Color(0xFFFFD9E2)
+    // Pager and interpolation state
+    val types = remember { NoiseType.values() }
+    val pagerState = rememberPagerState(initialPage = types.indexOf(activeType)) { types.size }
+
+    // Sync from ViewModel to Pager
+    LaunchedEffect(activeType) {
+        val targetPage = types.indexOf(activeType)
+        if (pagerState.currentPage != targetPage && !pagerState.isScrollInProgress) {
+            pagerState.animateScrollToPage(targetPage)
+        }
     }
 
-    val activeQuietColor = when (activeType) {
-        NoiseType.WHITE -> Color(0x334DD0E1)
-        NoiseType.GRAY -> Color(0x33CFD8DC)
-        NoiseType.PINK -> Color(0x33FFB1C8)
+    // Sync from Pager to ViewModel
+    LaunchedEffect(pagerState.currentPage) {
+        if (activeType != types[pagerState.currentPage]) {
+            viewModel.changeType(types[pagerState.currentPage])
+        }
     }
 
-    val activeContrastText = when (activeType) {
-        NoiseType.PINK -> Color(0xFF31111D)
-        NoiseType.WHITE -> Color(0xFF00363D)
-        NoiseType.GRAY -> Color(0xFF263238)
+    fun getThemeForType(type: NoiseType) = when (type) {
+        NoiseType.WHITE -> NoiseTheme(Color(0xFF4DD0E1), Color(0xFFE0F7FA), Color(0x334DD0E1), Color(0xFF00363D))
+        NoiseType.GRAY -> NoiseTheme(Color(0xFFCFD8DC), Color(0xFFECEFF1), Color(0x33CFD8DC), Color(0xFF263238))
+        NoiseType.PINK -> NoiseTheme(Color(0xFFFFB1C8), Color(0xFFFFD9E2), Color(0x33FFB1C8), Color(0xFF31111D))
     }
 
-    val activeVolume = when (activeType) {
-        NoiseType.WHITE -> whiteVol
-        NoiseType.GRAY -> grayVol
-        NoiseType.PINK -> pinkVol
+    val currentPage = pagerState.currentPage
+    val offsetFraction = pagerState.currentPageOffsetFraction
+    val targetPage = if (offsetFraction > 0f) {
+        (currentPage + 1).coerceAtMost(types.size - 1)
+    } else if (offsetFraction < 0f) {
+        (currentPage - 1).coerceAtLeast(0)
+    } else {
+        currentPage
     }
+    val fraction = abs(offsetFraction)
+
+    val currentTheme = getThemeForType(types[currentPage])
+    val targetTheme = getThemeForType(types[targetPage])
+
+    val activeAccentColor = lerp(currentTheme.accent, targetTheme.accent, fraction)
+    val activeLightColor = lerp(currentTheme.light, targetTheme.light, fraction)
+    val activeContrastText = lerp(currentTheme.contrastText, targetTheme.contrastText, fraction)
 
     // Interactive circular core pulsation
     val infiniteTransition = rememberInfiniteTransition(label = "corePulse")
@@ -129,26 +151,14 @@ fun NoiseUiScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(canvasBg)
-            .pointerInput(Unit) {
-                var dragAmountAccumulator = 0f
-                detectVerticalDragGestures(
-                    onDragStart = { dragAmountAccumulator = 0f },
-                    onDragEnd = {
-                        if (dragAmountAccumulator > 140f) {
-                            // Swiped down -> Previous profile
-                            viewModel.rotatePrevious()
-                        } else if (dragAmountAccumulator < -140f) {
-                            // Swiped up -> Next profile
-                            viewModel.rotateNext()
-                        }
-                    },
-                    onVerticalDrag = { change, dragAmount ->
-                        change.consume()
-                        dragAmountAccumulator += dragAmount
-                    }
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        activeAccentColor.copy(alpha = 0.12f).compositeOver(canvasBg),
+                        canvasBg
+                    )
                 )
-            }
+            )
     ) {
         // Blur background aura
         Box(
@@ -225,157 +235,176 @@ fun NoiseUiScreen(
                 }
             }
 
-            // 2. Playback Core Bubble
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
+            // Pager for swipable core and sliders
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) { page ->
+                val pageType = types[page]
+                val pageVolume = when (pageType) {
+                    NoiseType.WHITE -> whiteVol
+                    NoiseType.GRAY -> grayVol
+                    NoiseType.PINK -> pinkVol
+                }
+
                 Column(
+                    modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Circle trigger button matching exact specs
+                    // 2. Playback Core Bubble
                     Box(
                         modifier = Modifier
-                            .size(208.dp) // Tailwind w-52
-                            .scale(playButtonScale)
-                            .clip(CircleShape)
-                            .background(activeAccentColor)
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onPress = {
-                                        isPressed = true
-                                        tryAwaitRelease()
-                                        isPressed = false
-                                        viewModel.togglePlayPause()
-                                    }
-                                )
-                            }
-                            .testTag("core_interactive_bubble"),
+                            .weight(1f)
+                            .fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Play/Pause icon inside
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Stop Playback" else "Start Playback",
-                            tint = activeContrastText,
-                            modifier = Modifier.size(68.dp)
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            // Circle trigger button matching exact specs
+                            Box(
+                                modifier = Modifier
+                                    .size(208.dp) // Tailwind w-52
+                                    .scale(playButtonScale)
+                                    .clip(CircleShape)
+                                    .background(activeAccentColor)
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                isPressed = true
+                                                tryAwaitRelease()
+                                                isPressed = false
+                                                viewModel.togglePlayPause()
+                                            }
+                                        )
+                                    }
+                                    .testTag("core_interactive_bubble"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // Play/Pause icon inside
+                                Icon(
+                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = if (isPlaying) "Stop Playback" else "Start Playback",
+                                    tint = activeContrastText,
+                                    modifier = Modifier.size(68.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(36.dp))
+
+                            // Title Header: Pink Noise, White Noise, Gray Noise
+                            Text(
+                                text = when (pageType) {
+                                    NoiseType.WHITE -> "White Noise"
+                                    NoiseType.GRAY -> "Gray Noise"
+                                    NoiseType.PINK -> "Pink Noise"
+                                },
+                                fontSize = 38.sp,
+                                fontWeight = FontWeight.Light,
+                                letterSpacing = (-1).sp,
+                                color = activeAccentColor,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.testTag("active_noise_title")
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Cozy descriptive caption
+                            Text(
+                                text = when (pageType) {
+                                    NoiseType.PINK -> "Deep, soothing low frequencies for focus and restful sleep."
+                                    NoiseType.WHITE -> "Infinite full-spectrum sharp masking to target ambient noise."
+                                    NoiseType.GRAY -> "Equal-loudness compensated curve for psychoacoustic calm."
+                                },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = cardHeaderColor,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp,
+                                modifier = Modifier
+                                    .widthIn(max = 260.dp)
+                                    .padding(horizontal = 8.dp)
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            // Flowing cozy mini visualizer waves
+                            WaveformVisualizer(isPlaying = isPlaying, activeColor = activeAccentColor)
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(36.dp))
-
-                    // Title Header: Pink Noise, White Noise, Gray Noise
-                    Text(
-                        text = when (activeType) {
-                            NoiseType.WHITE -> "White Noise"
-                            NoiseType.GRAY -> "Gray Noise"
-                            NoiseType.PINK -> "Pink Noise"
-                        },
-                        fontSize = 38.sp,
-                        fontWeight = FontWeight.Light,
-                        letterSpacing = (-1).sp,
-                        color = activeAccentColor,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.testTag("active_noise_title")
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Cozy descriptive caption
-                    Text(
-                        text = when (activeType) {
-                            NoiseType.PINK -> "Deep, soothing low frequencies for focus and restful sleep."
-                            NoiseType.WHITE -> "Infinite full-spectrum sharp masking to target ambient noise."
-                            NoiseType.GRAY -> "Equal-loudness compensated curve for psychoacoustic calm."
-                        },
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = cardHeaderColor,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 18.sp,
+                    // 3. Immersive Intensity Sliders Section
+                    Column(
                         modifier = Modifier
-                            .widthIn(max = 260.dp)
-                            .padding(horizontal = 8.dp)
-                    )
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    ) {
+                        // Label row with active percentage
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "INTENSITY",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.8.sp,
+                                color = activeAccentColor
+                            )
+                            Text(
+                                text = "${(pageVolume * 100).toInt()}%",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = cardHeaderColor
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                    // Flowing cozy mini visualizer waves
-                    WaveformVisualizer(isPlaying = isPlaying, activeColor = activeAccentColor)
+                        // Custom High-Fidelity Retro Thick Slider
+                        ImmersiveSlider(
+                            value = pageVolume,
+                            onValueChange = {
+                                when (pageType) {
+                                    NoiseType.WHITE -> viewModel.setWhiteVolume(it)
+                                    NoiseType.GRAY -> viewModel.setGrayVolume(it)
+                                    NoiseType.PINK -> viewModel.setPinkVolume(it)
+                                }
+                            },
+                            accentColor = activeAccentColor,
+                            thumbColor = activeLightColor,
+                            borderColor = activeContrastText
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                 }
             }
 
-            // 3. Immersive Intensity Sliders Section
-            Column(
+            // 4. Dot Indicator rotation pills matching specifications
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Label row with active percentage
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "INTENSITY",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.8.sp,
-                        color = activeAccentColor
+                types.forEachIndexed { index, type ->
+                    val isActive = pagerState.currentPage == index
+                    val pillWidth by animateDpAsState(targetValue = if (isActive) 24.dp else 8.dp, label = "pill")
+                    val pillColor = if (isActive) activeAccentColor else Color(0xFF45474A)
+
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(width = pillWidth, height = 8.dp)
+                            .clip(CircleShape)
+                            .background(pillColor)
+                            .clickable { viewModel.changeType(type) }
                     )
-                    Text(
-                        text = "${(activeVolume * 100).toInt()}%",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = cardHeaderColor
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Custom High-Fidelity Retro Thick Slider
-                ImmersiveSlider(
-                    value = activeVolume,
-                    onValueChange = {
-                        when (activeType) {
-                            NoiseType.WHITE -> viewModel.setWhiteVolume(it)
-                            NoiseType.GRAY -> viewModel.setGrayVolume(it)
-                            NoiseType.PINK -> viewModel.setPinkVolume(it)
-                        }
-                    },
-                    accentColor = activeAccentColor,
-                    thumbColor = activeLightColor,
-                    borderColor = activeContrastText
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // 4. Dot Indicator rotation pills matching specifications
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    NoiseType.values().forEachIndexed { index, type ->
-                        val isActive = activeType == type
-                        val pillWidth by animateDpAsState(targetValue = if (isActive) 24.dp else 8.dp, label = "pill")
-                        val pillColor = if (isActive) activeAccentColor else Color(0xFF45474A)
-
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 4.dp)
-                                .size(width = pillWidth, height = 8.dp)
-                                .clip(CircleShape)
-                                .background(pillColor)
-                                .clickable { viewModel.changeType(type) }
-                        )
-                    }
                 }
             }
 
