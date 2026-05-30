@@ -1,0 +1,21 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Local history
+/history/
+# Android Studio / IntelliJ project specific files
+# These should usually be ignored unless specific project-wide settings are needed.
+# Most are local to the machine or contain user-specific data.
+*.iws
+/dictionaries/
+/libraries/
+/modules.xml
+/vcs.xml
+/assetWizardSettings.xml
+/deploymentTargetDropDown.xml
+/deploymentTargetSelector.xml
+/deploymentTargetSelector-*.xml
+/project-cache.xml
+/render.experimental.xml
+/sqlite.xml
+/usage.statistics.xml
