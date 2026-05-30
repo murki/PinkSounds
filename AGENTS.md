@@ -34,8 +34,8 @@ When altering or adding UI, strictly adhere to the following color palette and p
 - **Text / Muted Icons**: Cool silver (`#C2C7CF`), Darker gray (`#45474A`)
 - **Accent Colors (Dynamic by Profile)**:
     - *Pink Noise*: Warm comfort rose (`#FFB1C8`) / Light (`#FFD9E2`)
-    - *White Noise*: Bright aqua (`#4DD0E1`) / Light (`#E0F7FA`)
-    - *Gray Noise*: Sleek aluminum (`#CFD8DC`) / Light (`#ECEFF1`)
+    - *White Noise*: Pure white (`#FFFFFF`) / Light (`#F5F5F5`)
+    - *Gray Noise*: Stormy slate gray (`#78909C`) / Light (`#B0BEC5`)
 
 ## Guidelines for Modification
 1. **Preserve Custom UI**: Do not replace custom interactive elements (`ImmersiveSlider`, pulse animations, gradient auras) with standard Material components unless specifically instructed to strip the design.

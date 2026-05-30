@@ -11,12 +11,12 @@
         android:strokeLineCap="round"
         android:pathData="M 28,54 C 28,32 40,26 54,26 C 68,26 80,32 80,54" />
     <path
-        android:strokeColor="#4DD0E1"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="3.2"
         android:strokeLineCap="round"
         android:pathData="M 36,54 C 36,40 44,34 54,34 C 64,34 72,40 72,54" />
     <path
-        android:strokeColor="#CFD8DC"
+        android:strokeColor="#78909C"
         android:strokeWidth="3.2"
         android:strokeLineCap="round"
         android:pathData="M 44,54 C 44,48 48,42 54,42 C 60,42 64,48 64,54" />

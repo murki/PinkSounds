@@ -104,8 +104,8 @@ fun NoiseUiScreen(
     }
 
     fun getThemeForType(type: NoiseType) = when (type) {
-        NoiseType.WHITE -> NoiseTheme(Color(0xFF4DD0E1), Color(0xFFE0F7FA), Color(0x334DD0E1), Color(0xFF00363D))
-        NoiseType.GRAY -> NoiseTheme(Color(0xFFCFD8DC), Color(0xFFECEFF1), Color(0x33CFD8DC), Color(0xFF263238))
+        NoiseType.WHITE -> NoiseTheme(Color.White, Color(0xFFF5F5F5), Color(0x33FFFFFF), Color(0xFF1A1C1E))
+        NoiseType.GRAY -> NoiseTheme(Color(0xFF78909C), Color(0xFFB0BEC5), Color(0x3378909C), Color.White)
         NoiseType.PINK -> NoiseTheme(Color(0xFFFFB1C8), Color(0xFFFFD9E2), Color(0x33FFB1C8), Color(0xFF31111D))
     }
 
@@ -500,12 +500,12 @@ fun NoiseUiScreen(
                         
                         Divider(modifier = Modifier.padding(vertical = 4.dp))
                         
-                        Text("White Noise", fontWeight = FontWeight.Bold, color = Color(0xFF4DD0E1))
+                        Text("White Noise", fontWeight = FontWeight.Bold, color = Color.White)
                         Text("Emits equal power across all audible frequencies. Perfect for blocking sudden traffic noises or distracting chatter.", fontSize = 13.sp)
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        Text("Gray Noise", fontWeight = FontWeight.Bold, color = Color(0xFFCFD8DC))
+                        Text("Gray Noise", fontWeight = FontWeight.Bold, color = Color(0xFF78909C))
                         Text("Emphasizes both low and high frequencies, matching the human ear's equal-loudness contours for an exceptionally balanced sound.", fontSize = 13.sp)
                         
                         Spacer(modifier = Modifier.height(8.dp))
@@ -607,12 +607,12 @@ fun NoiseUiScreen(
                             showPresetsDialog = false
                         }
                         
-                        PresetRowItem(title = "Study & Focus Block", desc = "High power sharp masking", color = Color(0xFF4DD0E1)) {
+                        PresetRowItem(title = "Study & Focus Block", desc = "High power sharp masking", color = Color.White) {
                             viewModel.applyPreset("Focus")
                             showPresetsDialog = false
                         }
                         
-                        PresetRowItem(title = "Balanced Ocean Roar", desc = "Quiet psych-acoustic comfort", color = Color(0xFFCFD8DC)) {
+                        PresetRowItem(title = "Balanced Ocean Roar", desc = "Quiet psych-acoustic comfort", color = Color(0xFF78909C)) {
                             viewModel.applyPreset("Calm")
                             showPresetsDialog = false
                         }
