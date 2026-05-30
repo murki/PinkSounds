@@ -1,0 +1,6 @@
+{
+  "name": "NoiseScape",
+  "description": "A sleek, minimalist phone app emitting premium acoustic White, Gray, and Pink noise profiles with natural swipe controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
